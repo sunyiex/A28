@@ -57,7 +57,7 @@ def build_feishu_card(data):
         pct = idx.get("涨跌幅(%)")
         name = idx["指数名称"]
         cat = idx["分类"]
-        icon = "🏛️" if cat == "二" else "📈"
+        tag = "【二】" if cat == "二" else "【八】"
         sign = "🔴" if pct and pct < 0 else "🟢"
         price = idx.get("收盘价", "")
 
@@ -65,7 +65,7 @@ def build_feishu_card(data):
             "tag": "div",
             "text": {
                 "tag": "lark_md",
-                "content": f"{icon} {name:8s}  {sign} **{pct:+.2f}%**  (收盘 {price})"
+                "content": f"{tag} {name:8s}  {sign} **{pct:+.2f}%**  (收盘 {price})"
             }
         })
 
