@@ -21,8 +21,12 @@ import json
 import sys
 import argparse
 import os
+import socket
 
 warnings.filterwarnings("ignore")
+
+# 全局 socket 超时，避免个别指数卡死
+socket.setdefaulttimeout(15)
 
 # ─── 指数列表配置 ───
 INDEX_LIST = [
@@ -97,7 +101,7 @@ def fetch_em(em_code, name):
         return None
 
 
-def fetch_index(code, em_code, name):
+def fetch_index(code, em_code, name, silent=False):
     """尝试所有接口获取指数数据"""
     # 本地优先用新浪
     df = fetch_sina(code, name)
