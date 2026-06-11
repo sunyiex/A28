@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>A股二八分化 - 最新</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         max-width: 1000px; margin: 0 auto; padding: 24px; background: #f8fafc; }
+  h1 { font-size: 24px; display: flex; align-items: center; gap: 8px; }
+  .subtitle { color: #64748b; font-size: 14px; margin-top: -8px; margin-bottom: 24px; }
+  .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-box { background: white; border-radius: 12px; padding: 16px; text-align: center;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .stat-box .value { font-size: 28px; font-weight: 700; margin: 4px 0; }
+  .stat-box .label { font-size: 13px; color: #64748b; }
+  .green { color: #22c55e; }
+  .red { color: #ef4444; }
+  .amber { color: #f59e0b; }
+  .blue { color: #3b82f6; }
+  .note { color: #94a3b8; font-size: 12px; text-align: center; margin-top: 16px; }
+  .disclaimer { color: #94a3b8; font-size: 11px; text-align: center; margin-top: 32px;
+                padding: 16px; border-top: 1px solid #e2e8f0; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f1f5f9; color: #475569; padding: 10px 12px; text-align: center; font-weight: 600; }
+  td { padding: 10px 12px; text-align: center; border-bottom: 1px solid #f1f5f9; }
+  .cat-badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+  .cat-er { background: #dbeafe; color: #1d4ed8; }
+  .cat-ba { background: #fce7f3; color: #db2777; }
+  .miss { color: #94a3b8; font-style: italic; }
+  .date-nav { text-align: center; margin-bottom: 16px; font-size: 14px; }
+  .date-nav input { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+  .date-nav button { padding: 6px 16px; background: #3b82f6; color: white; border: none;
+                     border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .date-nav button:hover { background: #2563eb; }
+</style>
+</head>
+<body>
+
+<h1>📊 A股 二八分化 统计</h1>
+<div class="subtitle">
+  查询日期: <strong>最新</strong> |
+  统计周期: <strong>20个交易日</strong> |
+  数据日期: <strong>2026-06-10</strong>
+</div>
+
+<div class="date-nav">
+  <input type="date" id="datePicker" value="2026-06-11" />
+  <button onclick="goDate()">查询</button>
+  <span style="margin:0 8px">|</span>
+  <button onclick="goLatest()" style="background:#64748b">最新</button>
+  <span style="margin-left:12px;font-size:13px;color:#94a3b8">周期:
+    <select id="periodSelect" onchange="goDate()">
+      <option value="5" >5日</option>
+      <option value="10" >10日</option>
+      <option value="20" selected>20日</option>
+      <option value="30" >30日</option>
+      <option value="60" >60日</option>
+    </select>
+  </span>
+</div>
+
+<div class="summary-grid" id="summaryGrid">
+  <div class="stat-box"><div class="label">大盘(二) 均值</div><div class="value red" id="erAvg">--</div></div>
+  <div class="stat-box"><div class="label">小盘(八) 均值</div><div class="value red" id="baAvg">--</div></div>
+  <div class="stat-box"><div class="label">二八差距</div><div class="value green" id="diffVal">--</div></div>
+  <div class="stat-box"><div class="label">分化程度</div><div class="value amber" id="diffLvl">--</div></div>
+</div>
+
+<div class="card">
+  <h2>📈 近20日涨跌幅对比</h2>
+  <canvas id="barChart" height="350"></canvas>
+</div>
+
+<div class="card">
+  <h2>📊 近5 / 近20 / 近60日涨跌幅</h2>
+  <canvas id="groupChart" height="350"></canvas>
+</div>
+
+<div class="card">
+  <h2>📋 详细数据表</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>分类</th><th>指数名称</th><th>代码</th>
+        <th>收盘价</th><th>近5日</th><th>近20日</th><th>近60日</th><th>数据日期</th>
+      </tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div class="note"></div>
+</div>
+
+<div class="disclaimer">
+  ⚠️ 数据来源：akshare (新浪/东方财富) | 仅供学习参考，不构成投资建议<br>
+  生成时间：<span id="footerTime">2026-06-11 16:57:15</span>
+</div>
+
+<script>
+const data = {"查询日期": "最新", "数据日期": "2026-06-10", "统计周期": 20, "大盘平均": -6.093333333333334, "小盘平均": -7.787999999999999, "二八差距": 1.69, "指数": [{"分类": "二", "指数名称": "沪深300", "代码": "sh000300", "近20日涨跌幅(%)": -5.0, "涨跌幅(%)": -5.0, "近5日涨跌幅(%)": -3.85, "近60日涨跌幅(%)": 1.3, "收盘价": 4748.59, "数据日期": "2026-06-10"}, {"分类": "二", "指数名称": "上证50", "代码": "sh000016", "近20日涨跌幅(%)": -6.46, "涨跌幅(%)": -6.46, "近5日涨跌幅(%)": -2.42, "近60日涨跌幅(%)": -4.08, "收盘价": 2850.37, "数据日期": "2026-06-10"}, {"分类": "二", "指数名称": "中证100", "代码": "sh000903", "近20日涨跌幅(%)": -6.82, "涨跌幅(%)": -6.82, "近5日涨跌幅(%)": -4.89, "近60日涨跌幅(%)": 0.57, "收盘价": 4598.64, "数据日期": "2026-06-10"}, {"分类": "八", "指数名称": "创业板指", "代码": "sz399006", "近20日涨跌幅(%)": -4.54, "涨跌幅(%)": -4.54, "近5日涨跌幅(%)": -6.5, "近60日涨跌幅(%)": 16.19, "收盘价": 3854.79, "数据日期": "2026-06-10"}, {"分类": "八", "指数名称": "科创50", "代码": "sh000688", "近20日涨跌幅(%)": -6.66, "涨跌幅(%)": -6.66, "近5日涨跌幅(%)": -4.28, "近60日涨跌幅(%)": 19.41, "收盘价": 1652.22, "数据日期": "2026-06-10"}, {"分类": "八", "指数名称": "中证500", "代码": "sh000905", "近20日涨跌幅(%)": -9.58, "涨跌幅(%)": -9.58, "近5日涨跌幅(%)": -3.57, "近60日涨跌幅(%)": -3.54, "收盘价": 8063.86, "数据日期": "2026-06-10"}, {"分类": "八", "指数名称": "中证1000", "代码": "sh000852", "近20日涨跌幅(%)": -8.45, "涨跌幅(%)": -8.45, "近5日涨跌幅(%)": -2.77, "近60日涨跌幅(%)": -1.65, "收盘价": 8198.72, "数据日期": "2026-06-10"}, {"分类": "八", "指数名称": "国证2000", "代码": "sz399303", "近20日涨跌幅(%)": -9.71, "涨跌幅(%)": -9.71, "近5日涨跌幅(%)": -2.9, "近60日涨跌幅(%)": -2.71, "收盘价": 10657.7, "数据日期": "2026-06-10"}]};
+const period = 20;
+
+document.getElementById('footerTime').textContent = data.数据日期 || data.查询日期;
+
+const erAvg = data.大盘平均, baAvg = data.小盘平均, diff = data.二八差距;
+document.getElementById('erAvg').textContent = (erAvg >= 0 ? '+' : '') + erAvg.toFixed(2) + '%';
+document.getElementById('erAvg').className = 'value ' + (erAvg < 0 ? 'red' : 'green');
+document.getElementById('baAvg').textContent = (baAvg >= 0 ? '+' : '') + baAvg.toFixed(2) + '%';
+document.getElementById('baAvg').className = 'value ' + (baAvg < 0 ? 'red' : 'green');
+document.getElementById('diffVal').textContent = (diff >= 0 ? '+' : '') + diff.toFixed(2) + '%';
+document.getElementById('diffVal').className = 'value ' + (diff > 0 ? 'green' : 'red');
+
+let lvl = '弱分化';
+if (diff > 3) lvl = '强分化';
+else if (diff > 1) lvl = '明显分化';
+else if (diff < 0) lvl = '小盘占优';
+document.getElementById('diffLvl').textContent = lvl;
+document.getElementById('diffLvl').className = 'value amber';
+
+const items = data.指数;
+const pctCol = '近' + period + '日涨跌幅(%)';
+const labels = items.map(i => i.指数名称);
+const mainPct = items.map(i => i[pctCol]);
+const pct5 = items.map(i => i['近5日涨跌幅(%)']);
+const pct60 = items.map(i => i['近60日涨跌幅(%)']);
+
+// 柱状图
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: '近' + period + '日涨跌幅 (%)',
+      data: mainPct,
+      backgroundColor: mainPct.map(v => v < 0 ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)'),
+      borderColor: mainPct.map(v => v < 0 ? '#ef4444' : '#22c55e'),
+      borderWidth: 2,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          afterLabel: function(ctx) {
+            const item = items[ctx.dataIndex];
+            return '分类: ' + item.分类 + ' | 收盘: ' + item.收盘价.toLocaleString();
+          }
+        }
+      }
+    },
+    scales: {
+      y: { grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '%' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// 分组柱状图
+new Chart(document.getElementById('groupChart'), {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [
+      { label: '近5日', data: pct5, backgroundColor: 'rgba(251,191,36,0.7)', borderRadius: 3 },
+      { label: '近' + period + '日', data: mainPct, backgroundColor: 'rgba(239,68,68,0.7)', borderRadius: 3 },
+      { label: '近60日', data: pct60, backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 3 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y: { grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '%' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// 表格
+const tbody = document.getElementById('tableBody');
+items.forEach(i => {
+  const catClass = i.分类.includes('二') ? 'cat-er' : 'cat-ba';
+  const pct = i[pctCol];
+  const p5 = i['近5日涨跌幅(%)'];
+  const p60 = i['近60日涨跌幅(%)'];
+  const row = `<tr>
+    <td><span class="cat-badge ${catClass}">${i.分类.replace('(','').replace(')','')}</span></td>
+    <td><strong>${i.指数名称}</strong></td>
+    <td style="color:#94a3b8;font-size:12px">${i.代码}</td>
+    <td><strong>${i.收盘价.toLocaleString()}</strong></td>
+    <td class="${p5 < 0 ? 'red' : 'green'}">${(p5 >= 0 ? '+' : '') + p5.toFixed(2)}%</td>
+    <td class="${pct < 0 ? 'red' : 'green'}">${(pct >= 0 ? '+' : '') + pct.toFixed(2)}%</td>
+    <td class="${p60 < 0 ? 'red' : 'green'}">${(p60 >= 0 ? '+' : '') + p60.toFixed(2)}%</td>
+    <td style="color:#94a3b8">${i.数据日期}</td>
+  </tr>`;
+  tbody.innerHTML += row;
+});
+
+function goDate() {
+  const d = document.getElementById('datePicker').value;
+  const p = document.getElementById('periodSelect').value;
+  const params = [];
+  if (d) params.push('d=' + d);
+  if (p != 20) params.push('n=' + p);
+  const suffix = params.length > 0 ? '?' + params.join('&') : '';
+  window.location.href = window.location.pathname + suffix;
+}
+
+function goLatest() {
+  const p = document.getElementById('periodSelect').value;
+  const params = p != 20 ? '?n=' + p : '';
+  window.location.href = window.location.pathname + params;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+name: 每日二八分化数据
+
+on:
+  schedule:
+    # 每个交易日 16:30 北京时间 = 08:30 UTC
+    - cron: '30 8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '查询日期 (YYYY-MM-DD，留空为最新)'
+        required: false
+        type: string
+
+jobs:
+  fetch-and-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装依赖
+        run: |
+          pip install akshare pandas requests -q
+
+      - name: 获取二八分化数据
+        run: |
+          DATE_FLAG=""
+          if [ -n "${{ inputs.date }}" ]; then
+            DATE_FLAG="-d ${{ inputs.date }}"
+          fi
+          python3 erba_stats.py --format json $DATE_FLAG > /tmp/erba_data.json
+          cat /tmp/erba_data.json
+
+      - name: 发送到飞书
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+        run: |
+          python3 send_feishu.py /tmp/erba_data.json
+
+      - name: 上传数据产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: erba-stats
+          path: /tmp/erba_data.json
