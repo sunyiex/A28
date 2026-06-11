@@ -87,10 +87,10 @@ def build_feishu_card(data):
     # 注脚
     elements.append({
         "tag": "note",
-        "elements": [{
+        "text": {
             "tag": "plain_text",
-            "text": f"数据来源: akshare (东方财富) | 自动推送 @ {data.get('查询日期', '')}"
-        }]
+            "content": f"数据来源: akshare (东方财富) | 自动推送 @ {data.get('查询日期', '')}"
+        }
     })
 
     card = {
