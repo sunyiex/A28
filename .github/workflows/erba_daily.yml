@@ -2,8 +2,8 @@ name: 每日二八分化数据
 
 on:
   schedule:
-    # 每个交易日 16:30 北京时间 = 08:30 UTC
-    - cron: '30 7 * * 1-5'
+    # 每个交易日 16:45 北京时间 = 08:45 UTC
+    - cron: '45 8 * * 1-5'
   workflow_dispatch:
     inputs:
       date:
